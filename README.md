@@ -17,3 +17,7 @@ The cool-down effect take time in minutes so user can add from 1 - 60 and click 
 
 Manual mode:
 When user use the Manual mode the user can control the pump with the 2 button it provide "Turn On" and "Turn Off".
+
+You can check the website here:
+
+https://ridz473.github.io/Smart-Watering/
