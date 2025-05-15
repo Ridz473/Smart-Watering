@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+  <title>Smart Watering - Blynk Cloud Control</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .card h2 { margin-top: 0; }
+    button { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
+    #graphBlynk { width: 100%; height: 300px; margin-top: 20px; }
+  </style>
+
+</head>
+
+<body>
+
+  <h1 style="text-align: center;"> Smart Watering - Blynk Cloud Control</h1>
+
+  <div class="card">
+    <h2>Status</h2>
+    <p>Soil Moisture: <span id="soil">--</span>%</p>
+    <p>Temperature: <span id="temp">--</span>°C</p>
+    <canvas id="graphBlynk"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Control</h2>
+    <label>Mode:</label>
+    <select id="mode" onchange="updateMode()">
+      <option value="0">Machine Control The Pump</option>
+      <option value="1">User Control The Pump</option>
+      <option disabled selected hidden>-- Select Mode --</option>
+    </select>
+
+    <div id="manualControl" style="margin-top: 10px; display: none;">
+      <button onclick="togglePump(0)">Turn Pump ON</button>
+      <button onclick="togglePump(1)">Turn Pump OFF</button>
+    </div>
+
+    <p>Set your cool-down for the pump.</p>
+    <p><label>Cool-down (minutes):</label>
+    <input type="number" id="cooldown" min="1" max="60" placeholder="1 - 60" value="60">
+    <button onclick="updateCooldown()">Set</button></p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const TOKEN = "p8KrB0E7CxMKKFOnxvORiusxFWMEQo87";
+    const BASE_URL = `https://sgp1.blynk.cloud/external/api`;
+    const soilData = [];
+    const labels = [];
+    const ctxBlynk = document.getElementById('graphBlynk').getContext('2d');
+    const chartBlynk = new Chart(ctxBlynk, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Soil Moisture (%)',
+          data: soilData,
+          borderColor: 'blue',
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { display: true, title: { display: true, text: 'Time' } },
+          y: { beginAtZero: true, max: 100 }
+        }
+      }
+    });
+
+    function updateMode() {
+      const mode = document.getElementById("mode").value;
+      fetch(`${BASE_URL}/update?token=${TOKEN}&V5=${mode}`);
+      document.getElementById("manualControl").style.display = mode == 1 ? 'block' : 'none';
+    }
+
+    function togglePump(state) {
+      fetch(`${BASE_URL}/update?token=${TOKEN}&V4=${state}`);
+    }
+
+    function updateCooldown() {
+      const cooldown = document.getElementById("cooldown").value;
+      fetch(`${BASE_URL}/update?token=${TOKEN}&V3=${cooldown}`);
+    }
+
+    function fetchStatus() {
+
+        // Get soil moisture
+        fetch(`${BASE_URL}/get?token=${TOKEN}&V1`)
+        .then(res => res.text())
+        .then(data => {
+          document.getElementById("soil").innerText = data;
+          soilData.push(Number(data));
+          labels.push(new Date().toLocaleDateString());
+          if (soilData.length > 20) {
+            soilData.shift();
+            labels.shift();
+          }
+          chartBlynk.update();
+          });
+
+        // Get temperature
+        fetch(`${BASE_URL}/get?token=${TOKEN}&V2`)
+        .then(res => res.text())
+        .then(data => {
+        document.getElementById("temp").innerText = data;
+        });
+
+        // Get cooldown
+        fetch(`${BASE_URL}/get?token=${TOKEN}&V3`)
+        .then(res => res.text())
+        .then(data => {
+        document.getElementById("cooldown").value = data;
+        });
+
+        // Get mode
+        fetch(`${BASE_URL}/get?token=${TOKEN}&V5`)
+        .then(res => res.text())
+        .then(data => {
+        if (mode !== undefined && ( data === "0" || data === "1")) {
+          document.getElementById("mode").value = data;
+          document.getElementById("manualControl").style.display = data === "1" ? 'block' : 'none';
+          }
+      });
+    }
+
+    setInterval(fetchStatus, 5000);
+    fetchStatus();
+  </script>
+</body>
+</html>
